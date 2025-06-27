@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Lector QR Moderno</title>
+  <title>Lector QR</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     * {
@@ -118,20 +118,36 @@
     const resultElement = document.getElementById('result');
     const scanner = new Html5Qrcode("reader");
 
+    function mostrarResultado(texto) {
+      // Detectar QR tipo WiFi
+      if (texto.startsWith("WIFI:")) {
+        const ssid = texto.match(/S:([^;]*)/);
+        const pass = texto.match(/P:([^;]*)/);
+        const tipo = texto.match(/T:([^;]*)/);
+        resultElement.innerHTML = `
+          🔐 <strong>Red WiFi Detectada</strong><br>
+          📶 <strong>Nombre:</strong> ${ssid ? ssid[1] : 'Desconocido'}<br>
+          🔒 <strong>Tipo:</strong> ${tipo ? tipo[1] : 'Desconocido'}<br>
+          🔑 <strong>Contraseña:</strong> ${pass ? pass[1] : 'Ninguna'}
+        `;
+      } else if (texto.startsWith("http")) {
+        resultElement.innerHTML = `🌐 <strong>Enlace detectado:</strong><br><a href="${texto}" target="_blank" style="color: #00ffcc;">${texto}</a>`;
+      } else {
+        resultElement.innerHTML = `📄 <strong>Contenido:</strong><br>${texto}`;
+      }
+    }
+
     async function startScanner() {
       resultElement.textContent = "Escaneando...";
       await scanner.start(
         { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: 250
-        },
+        { fps: 10, qrbox: 250 },
         qrCodeMessage => {
-          resultElement.innerHTML = `<strong>✅ Código detectado:</strong> ${qrCodeMessage}`;
+          mostrarResultado(qrCodeMessage);
           scanner.stop();
         },
         errorMessage => {
-          // Error de escaneo (silencioso)
+          // Error ignorado por ahora
         }
       ).catch(err => {
         resultElement.textContent = "Error al iniciar la cámara: " + err;
@@ -140,14 +156,13 @@
 
     function scanFromFile(input) {
       if (input.files.length === 0) return;
-
       const file = input.files[0];
       scanner.scanFile(file, true)
         .then(decodedText => {
-          resultElement.innerHTML = `<strong>📄 Código de imagen:</strong> ${decodedText}`;
+          mostrarResultado(decodedText);
         })
         .catch(err => {
-          resultElement.textContent = "No se pudo leer el código de la imagen.";
+          resultElement.textContent = "❌ No se pudo leer el código de la imagen.";
         });
     }
   </script>
